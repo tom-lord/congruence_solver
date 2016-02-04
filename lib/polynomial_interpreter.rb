@@ -1,10 +1,25 @@
 class PolynomialInterpreter
-  module Errors
-    POLYNOMIAL_INVALID = ArgumentError.new "polynomial invalid"
-    CONGRUENCE_INVALID = ArgumentError.new "congruence invalid"
-    LHS_POLYNOMIAL_INVALID = ArgumentError.new "lhs polynomial invalid"
-    RHS_POLYNOMIAL_INVALID = ArgumentError.new "rhs polynomial invalid"
-    MOD_INVALID = ArgumentError.new "mod invalid"
+  PolynomialInterpreterError = Class.new(ArgumentError)
+  POLYNOMIAL_INVALID = Class.new(PolynomialInterpreterError)
+  class CONGRUENCE_INVALID < PolynomialInterpreterError
+    def message
+      "Congruence invalid: congruences must be of form:\n(lhs polynomial) = (rhs polynomial) mod (modulus)"
+    end
+  end
+  class LHS_POLYNOMIAL_INVALID < POLYNOMIAL_INVALID
+    def message
+      "Left hand polynomial invalid: polynomials must be of form: ax^b+cx^d...\n(integer coefficients, positive integer exponents, order irrelevant)"
+    end
+  end
+  class RHS_POLYNOMIAL_INVALID < POLYNOMIAL_INVALID
+    def message
+      "Right hand polynomial invalid: polynomials must be of form: ax^b+cx^d...\n(integer coefficients, positive integer exponents, order irrelevant)"
+    end
+  end
+  class MOD_INVALID < PolynomialInterpreterError
+    def message
+      "Mod invalid: modulus must be an integer greater than 2"
+    end
   end
 
 
@@ -12,7 +27,7 @@ class PolynomialInterpreter
     match_data = input_congruence.match(/^(.*)=(.*) +(?:mod +(.*)|\(mod +(.*)\))$/)
 
     if match_data.nil?
-      raise Errors::CONGRUENCE_INVALID
+      raise CONGRUENCE_INVALID
     end
 
     lhs = match_data[1]
@@ -21,26 +36,18 @@ class PolynomialInterpreter
 
     begin
       lh_coeffs = read_coeffs(lhs.gsub(" ", ""))
-    rescue ArgumentError => e
-      if(e == Errors::POLYNOMIAL_INVALID)
-        raise Errors::LHS_POLYNOMIAL_INVALID
-      else
-        raise e
-      end
+    rescue POLYNOMIAL_INVALID
+      raise LHS_POLYNOMIAL_INVALID
     end
 
     begin
       rh_coeffs = read_coeffs(rhs.gsub(" ", ""))
-    rescue ArgumentError => e
-      if e == Errors::POLYNOMIAL_INVALID
-        raise Errors::RHS_POLYNOMIAL_INVALID
-      else
-        raise e
-      end
+    rescue POLYNOMIAL_INVALID
+      raise RHS_POLYNOMIAL_INVALID
     end
 
     if mod !~ /\d+/ or mod.to_i < 2
-      raise Errors::MOD_INVALID
+      raise MOD_INVALID
     end
 
     0.upto rh_coeffs.length-1 do |idx|
@@ -55,7 +62,7 @@ class PolynomialInterpreter
 
   def self.read_coeffs(input_polynomial)
     if input_polynomial == ""
-      raise Errors::POLYNOMIAL_INVALID
+      raise POLYNOMIAL_INVALID
     end
 
     last_var = nil
@@ -69,14 +76,14 @@ class PolynomialInterpreter
       match_data_exp = Regexp.last_match
 
       if match_data_coe.nil? and match_data_exp.nil?
-        raise ArgumentError, INVALID_POLYNOMIAL_MSG
+        raise POLYNOMIAL_INVALID
       else
         if match_data_exp.nil?
           coe = match_data_coe[1].to_i
           exp = 0
         else
           unless last_var.nil? or last_var == match_data_exp[1]
-              raise Errors::POLYNOMIAL_INVALID
+            raise POLYNOMIAL_INVALID
           end
 
           last_var = match_data_exp[1]
@@ -88,7 +95,7 @@ class PolynomialInterpreter
           end
 
           if match_data_exp[2].nil?
-              exp = 1
+            exp = 1
           else
             exp = match_data_exp[2].to_i
           end
@@ -103,7 +110,7 @@ class PolynomialInterpreter
       op = input_polynomial.slice!(0)
 
       unless op.match /[-+]/
-        raise Errors::POLYNOMIAL_INVALID
+        raise POLYNOMIAL_INVALID
       end
     end
 
